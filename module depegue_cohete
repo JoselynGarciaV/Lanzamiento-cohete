@@ -1,0 +1,198 @@
+`timescale 1ns / 1ps
+
+module depegue_cohete(
+    input clk, // entrada de reloj
+    input [3:0] in_switch,  // entrada 
+    output reg [6:0] display,  // salida del display 7 segmentos 
+    output reg [7:0] enable, // habilitar display
+    output reg [15:0] LEDS = 0 // salida de los leds para abortar mision
+    );
+    reg [2:0]states = 0;  //Estados 
+    integer counter = 0; // contador
+    integer seconds = 0; // para los segundos
+    reg [7:0] display_units;//display de las unidades en el 7 segmentos
+    reg [7:0] display_tens; // display de las decenas en el 7 segmentos
+    reg [25:0]frecMux = 0; // Multiplexar
+    reg [3:0] units; //registro para almacenar las unidades
+    reg [3:0] tens;  //registro para almacenar las decenas
+   
+// contador
+always @(posedge clk) // con cada inicio de ciclo de reloj
+begin
+    frecMux = frecMux + 1 ;
+    if(states!=0)
+    begin
+        counter = counter + 1 ;
+    end    
+    if(counter == 100000000)
+    begin
+    counter = 0 ;
+    seconds = seconds + 1;
+    units = units + 1;
+    if(units > 9 ) //Cuando las unidades son mayor a 9
+    begin
+        units = 0; // se asigna cero
+        tens = tens + 1; // se le suma 1
+    end
+    if(tens > 9 ) // cuando las decenas son 9
+    begin
+        tens = 0; // todo pasa a ser cero y se reinicia el conteo
+        units = 0 ;
+        seconds = 0;
+    end
+ end
+    
+    
+    
+    display_units = (units == 4'b0000 ) ? 8'b1000000: //0
+                    (units == 4'b0001 ) ? 8'b1111001: //1
+                    (units == 4'b0010 ) ? 8'b0100100: //2
+                    (units == 4'b0011 ) ? 8'b0110000: //3
+                    (units == 4'b0100 ) ? 8'b0011001: //4
+                    (units == 4'b0101 ) ? 8'b0010010: //5
+                    (units == 4'b0110 ) ? 8'b0000010: //6
+                    (units == 4'b0111 ) ? 8'b1111000: //7
+                    (units == 4'b1000 ) ? 8'b0000000: //8
+                    (units == 4'b1001 ) ? 8'b0011000: //9
+                    (units == 4'b1010 ) ? 8'b0111111: //-
+                    8'b0000000;
+        
+      display_tens =  (tens == 4'b0000 ) ? 8'b1000000: //0
+                      (tens == 4'b0001 ) ? 8'b1111001: //1
+                      (tens == 4'b0010 ) ? 8'b0100100: //2
+                      (tens == 4'b0011 ) ? 8'b0110000: //3
+                      (tens == 4'b0100 ) ? 8'b0011001: //4
+                      (tens == 4'b0101 ) ? 8'b0010010: //5
+                      (tens == 4'b0110 ) ? 8'b0000010: //6
+                      (tens == 4'b0111 ) ? 8'b1111000: //7
+                      (tens == 4'b1000 ) ? 8'b0000000: //8
+                      (tens == 4'b1001 ) ? 8'b0011000: //9
+                      (tens == 4'b1010 ) ? 8'b0111111: //-
+                      8'b0000000;
+        
+    
+    if(frecMux == 1000000)
+        begin
+            display <= display_units;
+            enable <= 8'b11111110;
+        end
+    if(frecMux == 2000000)
+        begin
+            frecMux = 0;
+            display <= display_tens;
+            enable <= 8'b11111101;
+        end
+        
+        
+  if (states == 6)
+  begin
+       LEDS = 16'b1111111111111111;
+       seconds = 0;
+       units = 0;
+       tens = 0;
+       if (in_switch ==4'b0000)
+       begin
+       states = 0;
+       end
+  end   
+     
+  if(in_switch == 4'b0000)
+  begin
+      LEDS = 0;
+      seconds = 0;
+      states = 0 ;
+  end
+  //Etapa 0
+  if(in_switch == 4'b1000 && states == 0 )
+  begin
+    LEDS[15]=1; //Enciende el primer led
+    states= 1; 
+    LEDS[14]=1; //enciende segundo led
+  end
+  
+  //Etapa 1
+  if(in_switch== 4'b1100 && states == 1)
+  begin
+    if(seconds >= 20 && seconds <= 25)
+    begin
+        states = 2;
+        LEDS[13] = 1;
+       end
+       else
+       states = 6;
+   end
+   //Etapa 2
+   if(in_switch == 4'b1110 && states == 2)
+   begin
+        if(seconds >= 50 && seconds <= 55)
+        begin
+            states = 3;
+            LEDS [12] = 1;
+        end
+        else
+        states = 6 ;
+   end
+   //Etapa 3
+   if(in_switch == 4'b1111 && states == 3)
+   begin
+        if(seconds >= 80 && seconds <= 85)
+        begin
+        states = 4;
+        LEDS [11] = 1;
+        end
+        else
+        states = 6;
+   end
+   //Etapa 4 -> Despegue exitoso 
+   if(states == 4)
+       begin
+       LEDS[10] = 1;
+       if(in_switch== 4'b0000)
+           begin
+           seconds = 0;
+           units = 0;
+           tens = 0;
+           states = 0;
+           end
+       end
+       
+  if(states == 1)
+  begin
+        if(seconds <= 19 && in_switch!= 4'b1000)
+        begin
+            states = 6 ;
+        end
+        if(seconds > 25)
+        begin
+            states = 6;
+        end
+  end
+  
+  if(states == 2)
+  begin
+        if(seconds <= 49 && in_switch!= 4'b1100)
+        begin
+            states = 6 ;
+        end
+        if(seconds > 55)
+        begin
+            states = 6;
+        end
+  end
+  
+  if(states == 3)
+  begin
+        if(seconds <= 79 && in_switch!= 4'b1110)
+        begin
+            states = 6 ;
+        end
+        if(seconds > 85)
+        begin
+            states = 6;
+        end
+  end
+  
+ 
+ 
+ end 
+ endmodule

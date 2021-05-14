@@ -19,16 +19,16 @@ module depegue_cohete(
 // contador
 always @(posedge clk) // con cada inicio de ciclo de reloj
 begin
-    frecMux = frecMux + 1 ;
-    if(states!=0)
+    frecMux = frecMux + 1 ; 
+    if(states!=0) 
     begin
-        counter = counter + 1 ;
+        counter = counter + 1 ; // se le suma uno al contador
     end    
-    if(counter == 100000000)
+    if(counter == 100000000) // cuando sea 100M
     begin
-    counter = 0 ;
-    seconds = seconds + 1;
-    units = units + 1;
+    counter = 0 ;  // contador en cero
+    seconds = seconds + 1; // suma al contador de segundos
+    units = units + 1;  // Suma a las unidades
     if(units > 9 ) //Cuando las unidades son mayor a 9
     begin
         units = 0; // se asigna cero
@@ -43,7 +43,8 @@ begin
  end
     
     
-    
+ // Se establecen los segmentos que se van a encender tanto para el
+ //display de unidades como para las decenas
     display_units = (units == 4'b0000 ) ? 8'b1000000: //0
                     (units == 4'b0001 ) ? 8'b1111001: //1
                     (units == 4'b0010 ) ? 8'b0100100: //2
